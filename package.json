@@ -1,0 +1,20 @@
+{
+  "name": "design-system-cli",
+  "version": "1.0.0",
+  "description": "A Command Line Interface (CLI) to build, install and distribute a NPM design system",
+  "main": "bin/index.js",
+  "repository": {
+    "type": "git",
+    "url": "github.com/Eduk29/design-system-cli"
+  },
+  "author": "José Eduardo Trindade E Marques",
+  "license": "ISC",
+  "bin": {
+    "design-system-cli": "./bin/index.js"
+  },
+  "dependencies": {
+    "commander": "^12.1.0",
+    "fs-extra": "^11.2.0",
+    "glob": "^11.0.0"
+  }
+}

@@ -1,2 +1,3 @@
-# design-system-cli
-A command line interface to distribute a simple npm design system
+# Design System CLI
+
+A Command Line Interface (CLI) to build, install and distribute a NPM design system
