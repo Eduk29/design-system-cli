@@ -5,16 +5,6 @@ const package = require("./../package.json");
 const builder = require("./../builder/build");
 const installer = require("./../installer/install");
 
-const callBuilder = () => {
-  const componentName = program.args[1];
-  builder.buildComponent(componentName);
-};
-
-const callInstaller = () => {
-  const componentName = program.args[1];
-  installer.installComponent(componentName);
-};
-
 const hasComponentName = (component) => {
   if (Object.keys(component).length === 0) {
     console.error("Please provide a component name");
@@ -28,16 +18,18 @@ program
   .command('build [component]')
   .description("Build a component of design system")
   .action((component) => {
+    const componentName = program.args[1];
     hasComponentName(component);
-    callBuilder();
+    builder.buildComponent(componentName);
   });
 
 program
   .command('install [component]')
   .description("Install a component of design system")
   .action((component) => {
+    const componentName = program.args[1];
     hasComponentName(component);
-    callInstaller();
+    installer.installComponent(componentName);
   });
 
 program.parse(process.argv);

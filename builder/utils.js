@@ -1,13 +1,13 @@
 const fs = require("fs-extra");
 
-function existComponentInPath(componentName, componentPath) {
+const existComponentInPath = (componentName, componentPath) => {
   if (!fs.existsSync(componentPath)) {
     console.error(`Component ${componentName} not found in ${componentPath}`);
     process.exit(1);
   }
 }
 
-function revertUpdateImportsInTSFile(file) {
+const revertUpdateImportsInTSFile = (file) => {
   const fileContent = fs.readFileSync(file, "utf8");
 
   const newFileContent = fileContent.replace(
@@ -18,7 +18,22 @@ function revertUpdateImportsInTSFile(file) {
   fs.writeFileSync(file, newFileContent, "utf8");
 }
 
-function updateImportsInTSFile(file) {
+const showLoading = (message) => {
+  const loadingCharacters = ["|", "/", "-", "\\"];
+  let index = 0;
+
+  return setInterval(() => {
+    process.stdout.write(`\r ${message} ${loadingCharacters[index]}`);
+    index = (index + 1) % loadingCharacters.length;
+  }, 100);
+}
+
+const stopLoading = (interval) => {
+  clearInterval(interval);
+  process.stdout.write("\n");
+}
+
+const updateImportsInTSFile = (file) => {
   const fileContent = fs.readFileSync(file, "utf8");
 
   const newFileContent = fileContent.replace(
@@ -32,5 +47,7 @@ function updateImportsInTSFile(file) {
 module.exports = {
   existComponentInPath: existComponentInPath,
   revertUpdateImportsInTSFile: revertUpdateImportsInTSFile,
+  showLoading: showLoading,
+  stopLoading: stopLoading,
   updateImportsInTSFile: updateImportsInTSFile,
 };
