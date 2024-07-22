@@ -1,12 +1,8 @@
-const fs = require("fs-extra");
-const path = require("path");
-const { exec } = require("child_process");
-const { glob } = require("glob");
-const {
-  existComponentInPath,
-  revertUpdateImportsInTSFile,
-  updateImportsInTSFile,
-} = require("./utils");
+const fs = require('fs-extra');
+const path = require('path');
+const { exec } = require('child_process');
+const { glob } = require('glob');
+const { existComponentInPath, revertUpdateImportsInTSFile, updateImportsInTSFile } = require('./utils');
 
 function buildComponent(componentName) {
   const componentPath = `${getComponentPath(componentName)}/ng-package.json`;
@@ -20,11 +16,8 @@ function getComponentPath(componentName) {
 }
 
 function copySharedToComponentPath(componentName) {
-  const sharedPath = path.resolve(process.cwd(), "./src/app/shared");
-  const componentSharedPath = path.resolve(
-    process.cwd(),
-    `./src/app/components/${componentName}/shared`
-  );
+  const sharedPath = path.resolve(process.cwd(), './src/app/shared');
+  const componentSharedPath = path.resolve(process.cwd(), `./src/app/components/${componentName}/shared`);
 
   console.log(`Copying shared folder to component ${componentName}...`);
 
@@ -36,11 +29,11 @@ function copySharedToComponentPath(componentName) {
 }
 
 function searchTSFilesInComponent(componentName, componentPath, revertTSFile) {
-  rawComponentPath = componentPath.replace("/ng-package.json", "");
-  
+  const rawComponentPath = componentPath.replace('/ng-package.json', '');
+
   glob(`${rawComponentPath}/*.ts`)
-  .then((files) => {
-    if (!revertTSFile) {
+    .then(files => {
+      if (!revertTSFile) {
         console.log(`Searching files in component ${componentName}...`);
         console.log(`Updating imports in ${rawComponentPath}...`);
       } else {
@@ -54,9 +47,9 @@ function searchTSFilesInComponent(componentName, componentPath, revertTSFile) {
           return;
         } else {
           revertUpdateImportsInTSFile(file);
-          if (index === files.length -1) {
+          if (index === files.length - 1) {
             console.log(`Imports in component ${componentName} reverted successfully`);
-            console.log(`Removing shared folder from component ${componentName}...`);  
+            console.log(`Removing shared folder from component ${componentName}...`);
             fs.removeSync(`${rawComponentPath}/shared`);
             console.log('');
             console.log(`Congratulations!! Component ${componentName} built successfully`);
@@ -65,10 +58,10 @@ function searchTSFilesInComponent(componentName, componentPath, revertTSFile) {
         }
       });
     })
-    .catch((error) => {
+    .catch(error => {
       if (error) {
         console.error(`Error reading files in ${componentPath}: ${error}`);
-        return reject(error);
+        return error;
       }
     });
 }
@@ -76,14 +69,12 @@ function searchTSFilesInComponent(componentName, componentPath, revertTSFile) {
 function executeComponentBuild(componentName, componentPath) {
   copySharedToComponentPath(componentName);
   searchTSFilesInComponent(componentName, componentPath);
-  console.log("Installing dependencies...");
+  console.log('Installing dependencies...');
   exec(`npx ng-packagr -p ${componentPath}`, (error, stdout, stderr) => {
-    console.log("Dependencies installed");
+    console.log('Dependencies installed');
 
     if (error) {
-      console.error(
-        `Error during component ${componentName} construction: ${error}`
-      );
+      console.error(`Error during component ${componentName} construction: ${error}`);
       process.exit(1);
     }
     searchTSFilesInComponent(componentName, componentPath, true);

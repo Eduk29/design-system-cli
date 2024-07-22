@@ -3,6 +3,13 @@
   "version": "1.0.0",
   "description": "A Command Line Interface (CLI) to build, install and distribute a NPM design system",
   "main": "bin/index.js",
+  "scripts": {
+    "lint:check": "npx eslint --quiet",
+    "lint:fix": "npx eslint --quiet --fix",
+    "prepare": "npx husky install",
+    "prettier:check": "npx prettier ./**/*.{js,jsx} --check",
+    "prettier:fix": "npx prettier ./**/*.{js,jsx} --write"
+  },
   "repository": {
     "type": "git",
     "url": "github.com/Eduk29/design-system-cli"
@@ -16,5 +23,17 @@
     "commander": "^12.1.0",
     "fs-extra": "^11.2.0",
     "glob": "^11.0.0"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.3.0",
+    "@commitlint/config-conventional": "^19.2.2",
+    "@eslint/eslintrc": "^3.1.0",
+    "@eslint/js": "^9.7.0",
+    "eslint": "^9.7.0",
+    "eslint-config-prettier": "^9.1.0",
+    "globals": "^15.8.0",
+    "husky": "^8.0.0",
+    "lint-staged": "^15.2.7",
+    "prettier": "^3.3.3"
   }
 }
