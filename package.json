@@ -1,6 +1,6 @@
 {
   "name": "design-system-cli",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A Command Line Interface (CLI) to build, install and distribute a NPM design system",
   "main": "bin/index.js",
   "scripts": {
@@ -8,7 +8,10 @@
     "lint:fix": "npx eslint --quiet --fix",
     "prepare": "npx husky install",
     "prettier:check": "npx prettier ./**/*.{js,jsx} --check",
-    "prettier:fix": "npx prettier ./**/*.{js,jsx} --write"
+    "prettier:fix": "npx prettier ./**/*.{js,jsx} --write",
+    "release:major": "standard-version --release-as major",
+    "release:minor": "standard-version --release-as minor",
+    "release:patch": "standard-version --release-as patch"
   },
   "repository": {
     "type": "git",
@@ -36,7 +39,8 @@
     "globals": "^15.8.0",
     "husky": "^8.0.3",
     "lint-staged": "^15.2.7",
-    "prettier": "^3.3.3"
+    "prettier": "^3.3.3",
+    "standard-version": "^9.5.0"
   },
   "config": {
     "commitizen": {
