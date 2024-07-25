@@ -2,24 +2,40 @@ const fs = require('fs-extra');
 const path = require('path');
 const { exec } = require('child_process');
 const { glob } = require('glob');
-const { existComponentInPath, revertUpdateImportsInTSFile, updateImportsInTSFile } = require('./utils');
+const { existComponentInPath, revertUpdateImportsInTSFile, updateImportsInTSFile } = require('../shared/utils/utils');
+const {
+  dispatchInitiateBuildProcessMessage,
+  dispatchCopyingFolderMessage,
+  dispatchUpdateImportsMessage,
+  dispatchRevertImportsMessage,
+  dispatchSuccessfullRevertMessage,
+  dispatchInitiateInstallingDependenciesMessage,
+  dispatchDependenciesInstalledMessage,
+} = require('../shared/handlers/message-handler');
+const { dispatchBuildOrInstallComponentError, dispatchFileReadingError } = require('../shared/handlers/error-handler');
+const { angularSharedPath, angularComponentPath, packagrJsonName, angularBuildCommand } = require('../shared/utils/build-utils');
 
 function buildComponent(componentName) {
-  const componentPath = `${getComponentPath(componentName)}/ng-package.json`;
-  console.log(`Building component ${componentName}...`);
-  existComponentInPath(componentName, componentPath);
-  executeComponentBuild(componentName, componentPath);
+  const componentPath = `${getComponentPath(componentName)}/${packagrJsonName}`;
+  const existComponent = existComponentInPath(componentName, componentPath);
+  dispatchInitiateBuildProcessMessage('Build', componentName);
+
+  if (existComponent) {
+    executeComponentBuild(componentName, componentPath);
+  }
 }
 
 function getComponentPath(componentName) {
-  return path.resolve(process.cwd(), `./src/app/components/${componentName}`);
+  const componentPath = angularComponentPath.replace('$1', componentName);
+  return path.resolve(process.cwd(), componentPath);
 }
 
 function copySharedToComponentPath(componentName) {
-  const sharedPath = path.resolve(process.cwd(), './src/app/shared');
-  const componentSharedPath = path.resolve(process.cwd(), `./src/app/components/${componentName}/shared`);
+  const sharedPath = path.resolve(process.cwd(), angularSharedPath);
+  const componentPath = angularComponentPath.replace('$1', componentName);
+  const componentSharedPath = path.resolve(process.cwd(), `${componentPath}/shared`);
 
-  console.log(`Copying shared folder to component ${componentName}...`);
+  dispatchCopyingFolderMessage(componentName, 'shared');
 
   if (!fs.existsSync(componentSharedPath)) {
     fs.mkdirSync(componentSharedPath);
@@ -29,57 +45,48 @@ function copySharedToComponentPath(componentName) {
 }
 
 function searchTSFilesInComponent(componentName, componentPath, revertTSFile) {
-  const rawComponentPath = componentPath.replace('/ng-package.json', '');
+  const rawComponentPath = componentPath.replace(`/${packagrJsonName}`, '');
 
   glob(`${rawComponentPath}/*.ts`)
     .then(files => {
       if (!revertTSFile) {
-        console.log(`Searching files in component ${componentName}...`);
-        console.log(`Updating imports in ${rawComponentPath}...`);
+        dispatchUpdateImportsMessage(componentName, rawComponentPath);
       } else {
-        console.log(`Revert files in component ${componentName}...`);
-        console.log(`Reverting imports in ${rawComponentPath}...`);
-        console.log('');
+        dispatchRevertImportsMessage(componentName, rawComponentPath);
       }
-      files.forEach((file, index) => {
-        if (!revertTSFile) {
-          updateImportsInTSFile(file);
-          return;
-        } else {
-          revertUpdateImportsInTSFile(file);
-          if (index === files.length - 1) {
-            console.log(`Imports in component ${componentName} reverted successfully`);
-            console.log(`Removing shared folder from component ${componentName}...`);
-            fs.removeSync(`${rawComponentPath}/shared`);
-            console.log('');
-            console.log(`Congratulations!! Component ${componentName} built successfully`);
-          }
-          return;
-        }
-      });
+      executeFileChange(files, revertTSFile, componentName, rawComponentPath);
     })
     .catch(error => {
       if (error) {
-        console.error(`Error reading files in ${componentPath}: ${error}`);
-        return error;
+        dispatchFileReadingError(error, componentPath);
       }
     });
+}
+
+function executeFileChange(files, revertTSFile, componentName, rawComponentPath) {
+  files.forEach((file, index) => {
+    if (!revertTSFile) {
+      updateImportsInTSFile(file);
+      return;
+    } else {
+      revertUpdateImportsInTSFile(file);
+      dispatchSuccessfullRevertMessage(index, files.length, componentName, rawComponentPath);
+      return;
+    }
+  });
 }
 
 function executeComponentBuild(componentName, componentPath) {
   copySharedToComponentPath(componentName);
   searchTSFilesInComponent(componentName, componentPath);
-  console.log('Installing dependencies...');
-  exec(`npx ng-packagr -p ${componentPath}`, (error, stdout, stderr) => {
-    console.log('Dependencies installed');
+  dispatchInitiateInstallingDependenciesMessage();
+  exec(`${angularBuildCommand} ${componentPath}`, error => {
+    dispatchDependenciesInstalledMessage();
 
     if (error) {
-      console.error(`Error during component ${componentName} construction: ${error}`);
-      process.exit(1);
+      dispatchBuildOrInstallComponentError(componentName, 'build', error);
     }
     searchTSFilesInComponent(componentName, componentPath, true);
-    console.log(stdout);
-    console.log(stderr);
   });
 }
 

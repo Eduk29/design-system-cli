@@ -1,15 +1,16 @@
 const fs = require('fs-extra');
+const { dispatchComponentNotFound } = require('../handlers/error-handler');
 
 const existComponentInPath = (componentName, componentPath) => {
   if (!fs.existsSync(componentPath)) {
-    console.error(`Component ${componentName} not found in ${componentPath}`);
-    process.exit(1);
+    dispatchComponentNotFound(componentName, componentPath);
+    return false;
   }
+  return true;
 };
 
 const revertUpdateImportsInTSFile = file => {
   const fileContent = fs.readFileSync(file, 'utf8');
-
   const newFileContent = fileContent.replace(/from '.\/shared\//g, "from '@design-system/shared/");
 
   fs.writeFileSync(file, newFileContent, 'utf8');
