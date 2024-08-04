@@ -1,16 +1,8 @@
 #! /usr/bin/env node
-
 const { program } = require('commander');
 const packageJson = require('./../package.json');
 const builder = require('./../builder/build');
 const installer = require('./../installer/install');
-
-const hasComponentName = component => {
-  if (Object.keys(component).length === 0) {
-    console.error('Please provide a component name');
-    program.help();
-  }
-};
 
 program.version(packageJson.version);
 
@@ -18,18 +10,26 @@ program
   .command('build [component]')
   .description('Build a component of design system')
   .action(component => {
-    const componentName = program.args[1];
-    hasComponentName(component);
-    builder.buildComponent(componentName);
+    if (component) {
+      const componentName = program.args[1];
+      builder.buildComponent(componentName);
+    } else {
+      console.error('Please provide a component name');
+      program.help();
+    }
   });
 
 program
   .command('install [component]')
   .description('Install a component of design system')
   .action(component => {
-    const componentName = program.args[1];
-    hasComponentName(component);
-    installer.installComponent(componentName);
+    if (component) {
+      const componentName = program.args[1];
+      installer.installComponent(componentName);
+    } else {
+      console.error('Please provide a component name');
+      program.help();
+    }
   });
 
 program.parse(process.argv);

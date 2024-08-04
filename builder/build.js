@@ -1,93 +1,78 @@
-const fs = require('fs-extra');
 const path = require('path');
-const { exec } = require('child_process');
-const { glob } = require('glob');
-const { existComponentInPath, revertUpdateImportsInTSFile, updateImportsInTSFile } = require('../shared/utils/utils');
 const {
   dispatchInitiateBuildProcessMessage,
-  dispatchCopyingFolderMessage,
-  dispatchUpdateImportsMessage,
-  dispatchRevertImportsMessage,
-  dispatchSuccessfullRevertMessage,
   dispatchInitiateInstallingDependenciesMessage,
   dispatchDependenciesInstalledMessage,
 } = require('../shared/handlers/message-handler');
-const { dispatchBuildOrInstallComponentError, dispatchFileReadingError } = require('../shared/handlers/error-handler');
-const { angularSharedPath, angularComponentPath, packagrJsonName, angularBuildCommand } = require('../shared/utils/build-utils');
+const { dispatchBuildOrInstallComponentError } = require('../shared/handlers/error-handler');
+const { angularBuildCommand } = require('../shared/utils/build-utils');
+const {
+  constructComponentPath,
+  copyExternalModuleToComponentFolder,
+  copySharedFolderToComponentFolder,
+  existComponentInPath,
+  listModulesToUpdateTSFile,
+  moduleContainsExternalModules,
+  moduleUseSharedFolder,
+  removeSharedFolderFromComponent,
+  removeModulesFolderFromComponent,
+  revertUpdateSharedImportsInTSFile,
+  revertUpdateModulesImportsInTSFile,
+  updateSharedImportsInTSFile,
+  updateModulesImportsInTSFile,
+} = require('../shared/utils/utils');
+const { exec } = require('child_process');
 
-function buildComponent(componentName) {
-  const componentPath = `${getComponentPath(componentName)}/${packagrJsonName}`;
-  const existComponent = existComponentInPath(componentName, componentPath);
+const buildComponent = async componentName => {
   dispatchInitiateBuildProcessMessage('Build', componentName);
+  const rawComponentPath = constructComponentPath(componentName);
+  const componentPath = path.resolve(process.cwd(), rawComponentPath);
+  const existComponent = existComponentInPath(componentName, componentPath);
+  let componentUseShared = await _executeSharedFolderOperations(componentName, componentPath, existComponent);
+  let componentHasExternalModules = await _executeExternalModuleOperations(componentName, componentPath, existComponent);
 
-  if (existComponent) {
-    executeComponentBuild(componentName, componentPath);
+  if (existComponent && !componentHasExternalModules && !componentUseShared) {
+    _executeComponentBuild(componentName, componentPath);
   }
-}
+};
 
-function getComponentPath(componentName) {
-  const componentPath = angularComponentPath.replace('$1', componentName);
-  return path.resolve(process.cwd(), componentPath);
-}
-
-function copySharedToComponentPath(componentName) {
-  const sharedPath = path.resolve(process.cwd(), angularSharedPath);
-  const componentPath = angularComponentPath.replace('$1', componentName);
-  const componentSharedPath = path.resolve(process.cwd(), `${componentPath}/shared`);
-
-  dispatchCopyingFolderMessage(componentName, 'shared');
-
-  if (!fs.existsSync(componentSharedPath)) {
-    fs.mkdirSync(componentSharedPath);
-  }
-
-  fs.copySync(sharedPath, componentSharedPath);
-}
-
-function searchTSFilesInComponent(componentName, componentPath, revertTSFile) {
-  const rawComponentPath = componentPath.replace(`/${packagrJsonName}`, '');
-
-  glob(`${rawComponentPath}/*.ts`)
-    .then(files => {
-      if (!revertTSFile) {
-        dispatchUpdateImportsMessage(componentName, rawComponentPath);
-      } else {
-        dispatchRevertImportsMessage(componentName, rawComponentPath);
-      }
-      executeFileChange(files, revertTSFile, componentName, rawComponentPath);
-    })
-    .catch(error => {
-      if (error) {
-        dispatchFileReadingError(error, componentPath);
-      }
-    });
-}
-
-function executeFileChange(files, revertTSFile, componentName, rawComponentPath) {
-  files.forEach((file, index) => {
-    if (!revertTSFile) {
-      updateImportsInTSFile(file);
-      return;
-    } else {
-      revertUpdateImportsInTSFile(file);
-      dispatchSuccessfullRevertMessage(index, files.length, componentName, rawComponentPath);
-      return;
-    }
-  });
-}
-
-function executeComponentBuild(componentName, componentPath) {
-  copySharedToComponentPath(componentName);
-  searchTSFilesInComponent(componentName, componentPath);
+const _executeComponentBuild = (componentName, componentPath) => {
   dispatchInitiateInstallingDependenciesMessage();
   exec(`${angularBuildCommand} ${componentPath}`, error => {
     dispatchDependenciesInstalledMessage();
 
     if (error) {
       dispatchBuildOrInstallComponentError(componentName, 'build', error);
+    } else {
+      revertUpdateSharedImportsInTSFile(componentPath);
+      revertUpdateModulesImportsInTSFile(componentName, componentPath);
+      removeModulesFolderFromComponent(componentName);
+      removeSharedFolderFromComponent(componentName);
     }
-    searchTSFilesInComponent(componentName, componentPath, true);
   });
-}
+};
+
+const _executeExternalModuleOperations = async (componentName, componentPath, existComponent) => {
+  let componentHasExternalModules = await moduleContainsExternalModules(componentPath);
+
+  if (existComponent && componentHasExternalModules) {
+    const externalModulesCopied = copyExternalModuleToComponentFolder(componentName);
+    const modulesToUpdateTSFile = await listModulesToUpdateTSFile(componentName);
+    const externalImportsUpdated = updateModulesImportsInTSFile(componentPath, modulesToUpdateTSFile);
+    componentHasExternalModules = externalModulesCopied && externalImportsUpdated;
+  }
+  return componentHasExternalModules;
+};
+
+const _executeSharedFolderOperations = async (componentName, componentPath, existComponent) => {
+  let componentUseShared = await moduleUseSharedFolder(componentPath);
+
+  if (existComponent && componentUseShared) {
+    const sharedCopied = copySharedFolderToComponentFolder(componentName);
+    const sharedImportsUpdated = updateSharedImportsInTSFile(componentPath);
+    componentUseShared = sharedCopied && sharedImportsUpdated;
+  }
+  return componentUseShared;
+};
 
 module.exports = { buildComponent: buildComponent };
